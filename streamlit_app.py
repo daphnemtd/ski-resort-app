@@ -1,8 +1,7 @@
 import streamlit as st
 import pandas as pd
 import requests
-import folium
-from streamlit_folium import folium_static
+import matplotlib.pyplot as plt
 
 # Load the dataset
 def load_data():
@@ -40,27 +39,21 @@ st.write(f"💰 **Day Pass Price:** {resort_info['DayPassPriceAdult']} €")
 st.write(f"🎿 **Total Slope:** {resort_info['TotalSlope']} km")
 st.write(f"🌙 **Night Skiing Available:** {'Yes' if resort_info['NightSki'] else 'No'}")
 
-# Show resort location (example coordinates, should be in dataset)
-if "Latitude" in df.columns and "Longitude" in df.columns:
-    resort_lat, resort_lon = resort_info["Latitude"], resort_info["Longitude"]
-    m = folium.Map(location=[resort_lat, resort_lon], zoom_start=10)
-    folium.Marker([resort_lat, resort_lon], popup=selected_resort, icon=folium.Icon(color="red")).add_to(m)
-    folium_static(m)
-
 # Google Places API for restaurant suggestions
 st.subheader("🍽️ Nearby Restaurants")
 api_key = "YOUR_GOOGLE_PLACES_API_KEY"  # Replace with your API key
-location = f"{resort_lat},{resort_lon}"
-url = f"https://maps.googleapis.com/maps/api/place/nearbysearch/json?location={location}&radius=5000&type=restaurant&key={api_key}"
-response = requests.get(url).json()
-
-if "results" in response:
-    restaurants = response["results"][:5]
-    for r in restaurants:
-        st.write(f"🍴 **{r['name']}** - ⭐ {r.get('rating', 'N/A')} stars")
-        st.write(f"📍 Address: {r['vicinity']}")
-else:
-    st.write("No restaurant data available.")
+if "Latitude" in df.columns and "Longitude" in df.columns:
+    resort_lat, resort_lon = resort_info["Latitude"], resort_info["Longitude"]
+    location = f"{resort_lat},{resort_lon}"
+    url = f"https://maps.googleapis.com/maps/api/place/nearbysearch/json?location={location}&radius=5000&type=restaurant&key={api_key}"
+    response = requests.get(url).json()
+    
+    if "results" in response:
+        restaurants = response["results"][:5]
+        for r in restaurants:
+            st.write(f"🍴 **{r['name']}** - ⭐ {r.get('rating', 'N/A')} stars")
+            st.write(f"📍 Address: {r['vicinity']}")
+    else:
+        st.write("No restaurant data available.")
 
 st.markdown("---")
-st.write("Built with ❤️ using Streamlit")
