@@ -1,59 +1,53 @@
 import streamlit as st
 import pandas as pd
-import requests
-import matplotlib.pyplot as plt
 
 # Load the dataset
+@st.cache_data
 def load_data():
     return pd.read_csv("European_Ski_Resorts.csv")
 
 df = load_data()
 
 # Streamlit App Title
-st.title("⛷️ European Ski Resort Finder 🏔️")
-st.markdown("Find the best ski resort based on your preferences!")
+st.title("European Ski Resort Finder")
 
-# Sidebar filters
-st.sidebar.header("Filter Ski Resorts 🎯")
-country_filter = st.sidebar.multiselect("Select Country:", df["Country"].unique())
-max_price = st.sidebar.slider("Max Day Pass Price (€):", int(df["DayPassPriceAdult"].min()), int(df["DayPassPriceAdult"].max()), int(df["DayPassPriceAdult"].max()))
-min_slope = st.sidebar.slider("Min Total Slope (km):", 0, int(df["TotalSlope"].max()), 0)
+# Display basic information
+if st.checkbox("Show dataset overview"):
+    st.write(df.head())
+    st.write(df.describe())
 
-df_filtered = df[(df["DayPassPriceAdult"] <= max_price) & (df["TotalSlope"] >= min_slope)]
-if country_filter:
-    df_filtered = df_filtered[df_filtered["Country"].isin(country_filter)]
+# Find the cheapest ski resort
+st.subheader("Cheapest Ski Resort")
+st.write(df.loc[df['DayPassPriceAdult'].idxmin(), ['Resort', 'Country', 'DayPassPriceAdult']])
 
-# Display filtered resorts
-st.subheader("🏂 Matching Ski Resorts")
-st.dataframe(df_filtered[["Resort", "Country", "DayPassPriceAdult", "TotalSlope"]].sort_values("DayPassPriceAdult"))
+# Find the highest ski resort
+st.subheader("Highest Ski Resort")
+st.write(df.loc[df['HighestPoint'].idxmax(), ['Resort', 'Country', 'HighestPoint']])
 
-# Select a resort to get details
-selected_resort = st.selectbox("Select a Ski Resort for More Details:", df_filtered["Resort"].unique())
-resort_info = df[df["Resort"] == selected_resort].iloc[0]
+# Find the resort with the most slopes
+st.subheader("Resort with Most Slopes")
+st.write(df.loc[df['TotalSlope'].idxmax(), ['Resort', 'Country', 'TotalSlope']])
 
-st.subheader(f"🏔️ Resort Details: {selected_resort}")
-st.write(f"📍 **Country:** {resort_info['Country']}")
-st.write(f"🚡 **Highest Point:** {resort_info['HighestPoint']} m")
-st.write(f"🏔️ **Lowest Point:** {resort_info['LowestPoint']} m")
-st.write(f"💰 **Day Pass Price:** {resort_info['DayPassPriceAdult']} €")
-st.write(f"🎿 **Total Slope:** {resort_info['TotalSlope']} km")
-st.write(f"🌙 **Night Skiing Available:** {'Yes' if resort_info['NightSki'] else 'No'}")
+# Find the resort with the most lifts
+st.subheader("Resort with Most Lifts")
+st.write(df.loc[df['TotalLifts'].idxmax(), ['Resort', 'Country', 'TotalLifts']])
 
-# Google Places API for restaurant suggestions
-st.subheader("🍽️ Nearby Restaurants")
-api_key = "YOUR_GOOGLE_PLACES_API_KEY"  # Replace with your API key
-if "Latitude" in df.columns and "Longitude" in df.columns:
-    resort_lat, resort_lon = resort_info["Latitude"], resort_info["Longitude"]
-    location = f"{resort_lat},{resort_lon}"
-    url = f"https://maps.googleapis.com/maps/api/place/nearbysearch/json?location={location}&radius=5000&type=restaurant&key={api_key}"
-    response = requests.get(url).json()
-    
-    if "results" in response:
-        restaurants = response["results"][:5]
-        for r in restaurants:
-            st.write(f"🍴 **{r['name']}** - ⭐ {r.get('rating', 'N/A')} stars")
-            st.write(f"📍 Address: {r['vicinity']}")
+# Find the resort with the highest lift capacity
+st.subheader("Resort with Highest Lift Capacity")
+st.write(df.loc[df['LiftCapacity'].idxmax(), ['Resort', 'Country', 'LiftCapacity']])
+
+# Find ski resorts adapted for a specific level
+st.subheader("Find Resorts by Skill Level")
+level = st.selectbox("Select your level", ["Beginner", "Intermediate", "Difficult"])
+
+def resorts_by_level(level):
+    if level == "Beginner":
+        return df[df['BeginnerSlope'] > df['IntermediateSlope'] + df['DifficultSlope']][['Resort', 'Country', 'BeginnerSlope']]
+    elif level == "Intermediate":
+        return df[df['IntermediateSlope'] > df['BeginnerSlope'] + df['DifficultSlope']][['Resort', 'Country', 'IntermediateSlope']]
+    elif level == "Difficult":
+        return df[df['DifficultSlope'] > df['BeginnerSlope'] + df['IntermediateSlope']][['Resort', 'Country', 'DifficultSlope']]
     else:
-        st.write("No restaurant data available.")
+        return "Invalid level."
 
-st.markdown("---")
+st.write(resorts_by_level(level))
